@@ -1,0 +1,69 @@
+---------------- HBASE ----------------
+
+hbase shell
+
+create 'flight_info',
+'flight',
+'schedule',
+'delay'
+
+put 'flight_info','1','flight:name','AirIndia'
+
+put 'flight_info','1','schedule:departure','10:00'
+
+put 'flight_info','1','delay:minutes','30'
+
+scan 'flight_info'
+
+alter 'flight_info',
+NAME => 'status'
+
+
+---------------- HIVE ----------------
+
+hive
+
+CREATE EXTERNAL TABLE flight_hive(
+id STRING,
+name STRING,
+departure STRING,
+delay INT
+)
+
+STORED BY
+'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+
+WITH SERDEPROPERTIES(
+"hbase.columns.mapping"=
+":key,flight:name,schedule:departure,delay:minutes"
+)
+
+TBLPROPERTIES(
+"hbase.table.name"="flight_info"
+);
+
+SELECT SUM(delay)
+FROM flight_hive;
+
+SELECT AVG(delay)
+FROM flight_hive;
+
+CREATE INDEX flight_index
+ON TABLE flight_hive(name)
+AS 'COMPACT'
+WITH DEFERRED REBUILD;
+
+ALTER INDEX flight_index
+ON flight_hive
+REBUILD;
+
+
+---------------- OPTIONAL CLEANUP ----------------
+
+exit
+
+hbase shell
+
+disable 'flight_info'
+
+drop 'flight_info'
