@@ -1,0 +1,62 @@
+# Create HDFS folder
+hdfs dfs -mkdir -p /user/cloudera/onlineretail
+
+# Rename CSV file to remove spaces
+mv "/media/sf_Documents/Online Retail.csv" /media/sf_Documents/onlineretail.csv
+
+# Upload CSV to HDFS
+hdfs dfs -put /media/sf_Documents/onlineretail.csv /user/cloudera/onlineretail
+
+# Verify upload
+hdfs dfs -ls /user/cloudera/onlineretail
+
+# Open Hive
+hive
+
+CREATE TABLE online_retail (
+InvoiceNo STRING,
+StockCode STRING,
+Description STRING,
+Quantity INT,
+InvoiceDate STRING,
+UnitPrice DOUBLE,
+CustomerID STRING,
+Country STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE;
+
+LOAD DATA INPATH '/user/cloudera/onlineretail/onlineretail.csv'
+INTO TABLE online_retail;
+
+SELECT * FROM online_retail LIMIT 10;
+
+CREATE INDEX retail_index
+ON TABLE online_retail(CustomerID)
+AS 'COMPACT'
+WITH DEFERRED REBUILD;
+
+ALTER INDEX retail_index ON online_retail REBUILD;
+
+SELECT SUM(Quantity * UnitPrice) AS TotalSales
+FROM online_retail;
+
+SELECT AVG(Quantity * UnitPrice) AS AverageSales
+FROM online_retail;
+
+SELECT InvoiceNo,
+SUM(Quantity * UnitPrice) AS OrderTotal
+FROM online_retail
+GROUP BY InvoiceNo
+ORDER BY OrderTotal DESC
+LIMIT 1;
+
+SELECT CustomerID,
+SUM(Quantity * UnitPrice) AS CustomerTotal
+FROM online_retail
+GROUP BY CustomerID
+ORDER BY CustomerTotal DESC
+LIMIT 1;
+
+exit;

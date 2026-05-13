@@ -1,0 +1,5 @@
+sudo usermod -aG vboxsf cloudera
+hdfs dfs -mkdir -p /user/cloudera/input
+hdfs dfs -put input.txt /user/cloudera/input
+hadoop jar /home/cloudera/WordCount.jar WordCount /user/cloudera/input /user/cloudera/output
+hdfs dfs -cat /user/cloudera/output/part-r-00000
