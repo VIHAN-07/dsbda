@@ -1,17 +1,22 @@
-# Create HDFS folder
+```bash id="e7c4wy"
+# Create HDFS Directory
 hdfs dfs -mkdir -p /user/cloudera/onlineretail
 
-# Rename CSV file to remove spaces
+# Rename file (remove spaces)
 mv "/media/sf_Documents/Online Retail.csv" /media/sf_Documents/onlineretail.csv
 
-# Upload CSV to HDFS
+# Upload Dataset to HDFS
 hdfs dfs -put /media/sf_Documents/onlineretail.csv /user/cloudera/onlineretail
 
-# Verify upload
+# Verify Upload
 hdfs dfs -ls /user/cloudera/onlineretail
 
 # Open Hive
 hive
+```
+
+```sql id="f5z3km"
+-- i. Create and Load Online Retail Table in Hive
 
 CREATE TABLE online_retail (
 InvoiceNo STRING,
@@ -32,18 +37,29 @@ INTO TABLE online_retail;
 
 SELECT * FROM online_retail LIMIT 10;
 
+
+-- j. Create Index on Online Retail Table
+
 CREATE INDEX retail_index
 ON TABLE online_retail(CustomerID)
 AS 'COMPACT'
 WITH DEFERRED REBUILD;
 
-ALTER INDEX retail_index ON online_retail REBUILD;
+ALTER INDEX retail_index
+ON online_retail
+REBUILD;
+
+
+-- k. Find Total and Average Sales
 
 SELECT SUM(Quantity * UnitPrice) AS TotalSales
 FROM online_retail;
 
 SELECT AVG(Quantity * UnitPrice) AS AverageSales
 FROM online_retail;
+
+
+-- l. Find Order Details with Maximum Cost
 
 SELECT InvoiceNo,
 SUM(Quantity * UnitPrice) AS OrderTotal
@@ -52,6 +68,9 @@ GROUP BY InvoiceNo
 ORDER BY OrderTotal DESC
 LIMIT 1;
 
+
+-- m. Find Customer Details with Maximum Order Total
+
 SELECT CustomerID,
 SUM(Quantity * UnitPrice) AS CustomerTotal
 FROM online_retail
@@ -59,4 +78,84 @@ GROUP BY CustomerID
 ORDER BY CustomerTotal DESC
 LIMIT 1;
 
+
+-- n. Find Country with Maximum and Minimum Sale
+
+SELECT Country,
+SUM(Quantity * UnitPrice) AS TotalSales
+FROM online_retail
+GROUP BY Country
+ORDER BY TotalSales DESC
+LIMIT 1;
+
+SELECT Country,
+SUM(Quantity * UnitPrice) AS TotalSales
+FROM online_retail
+GROUP BY Country
+ORDER BY TotalSales ASC
+LIMIT 1;
+
+
+-- o. Create External Hive Table Connected to HBase
+
+CREATE EXTERNAL TABLE hbase_online_retail(
+InvoiceNo STRING,
+StockCode STRING,
+Description STRING,
+Quantity STRING,
+InvoiceDate STRING,
+UnitPrice STRING,
+CustomerID STRING,
+Country STRING
+)
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+
+WITH SERDEPROPERTIES(
+"hbase.columns.mapping"=
+":key,cf:StockCode,cf:Description,cf:Quantity,cf:InvoiceDate,cf:UnitPrice,cf:CustomerID,cf:Country"
+)
+
+TBLPROPERTIES(
+"hbase.table.name"="hbase_online_retail"
+);
+
+
+-- Insert Hive Data into HBase
+
+INSERT OVERWRITE TABLE hbase_online_retail
+SELECT InvoiceNo,
+StockCode,
+Description,
+CAST(Quantity AS STRING),
+InvoiceDate,
+CAST(UnitPrice AS STRING),
+CustomerID,
+Country
+FROM online_retail;
+
+
+-- p. Display Records from HBase through Hive
+
+SELECT * FROM hbase_online_retail LIMIT 10;
+
 exit;
+```
+
+```bash id="2a1mx7"
+# Open HBase Shell
+hbase shell
+```
+
+```text id="6x5qbo"
+# Create HBase Table
+create 'hbase_online_retail', 'cf'
+
+# Display HBase Tables
+list
+
+# Display Records in HBase Table
+scan 'hbase_online_retail'
+
+# Exit HBase
+exit
+```
